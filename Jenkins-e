@@ -1,0 +1,33 @@
+node {
+    try {
+        stage("GIT checkout") {
+            git 'https://github.com/RAJANI9/boxfuse-sample-java-war-hello.git'
+        }
+
+        stage("build") {
+            sh "mvn clean package"
+            sh "mv target/*.war target/boxfuse-sample-java-war-hello.war"
+        }
+
+        stage("deploy") {
+            sshagent(['NewTomcat']) {
+                def remoteDir = '/home/ubuntu/apache-tomcat-9.0.84/webapps/'
+                def remoteShutdownScript = '/home/ubuntu/apache-tomcat-9.0.84/bin/shutdown.sh'
+                def remoteStartupScript = '/home/ubuntu/apache-tomcat-9.0.84/bin/startup.sh'
+                def localWarFile = 'target/boxfuse-sample-java-war-hello.war'
+
+                // Copy the WAR file to the remote server
+                sh "scp -o StrictHostKeyChecking=no ${localWarFile} ubuntu@13.233.107.78:${remoteDir}"
+
+                // Shutdown and then startup Tomcat on the remote server
+                sh "ssh ubuntu@13.233.107.78 'sudo ${remoteShutdownScript}'"
+                sh "ssh ubuntu@13.233.107.78 'sudo ${remoteStartupScript}'"
+            }
+        }
+
+        echo 'Deployment successful!'
+    } catch (e) {
+        echo 'Deployment failed.'
+        throw e
+    }
+}
